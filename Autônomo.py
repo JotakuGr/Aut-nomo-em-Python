@@ -1,55 +1,83 @@
-# afd_qF.py
-# AFD que reconhece L = { w in {a,b,c}* | w começa com 'a', contém >=1 'c' e termina com 'b' }
-# qF Estado final 
+# afd_linguagem.py
+def criar_automato_linguagem():
+    # Estados
+    estados = {'q0', 'q1', 'q2', 'qF', 'qd'}
 
-from typing import Set
+    # Alfabeto
+    alfabeto = {'a', 'b', 'c'}
 
-# Estados
-Q = {"q0", "q1", "q2", "qF", "qd"}
-Sigma = {"a", "b", "c"}
-q0 = "q0"
-F = {"qF"}  
+    # Função de transição (delta) como dicionário (estado, símbolo) -> novo_estado
+    transicoes = {
+        # q0
+        ('q0', 'a'): 'q1',
+        ('q0', 'b'): 'qd',
+        ('q0', 'c'): 'qd',
+        # q1 (já começou com a, aguardando primeiro c)
+        ('q1', 'a'): 'q1',
+        ('q1', 'b'): 'q1',
+        ('q1', 'c'): 'q2',
+        # q2 (já vimos um c; último símbolo != b)
+        ('q2', 'a'): 'q2',
+        ('q2', 'c'): 'q2',
+        ('q2', 'b'): 'qF',
+        # qF (já vimos c e o último símbolo lido é b) - aceitação se terminar aqui
+        ('qF', 'b'): 'qF',
+        ('qF', 'a'): 'q2',
+        ('qF', 'c'): 'q2',
+        # qd (morto)
+        ('qd', 'a'): 'qd',
+        ('qd', 'b'): 'qd',
+        ('qd', 'c'): 'qd',
+    }
 
-# função de transição δ
-delta = {
-    ("q0", "a"): "q1",
-    ("q0", "b"): "qd",
-    ("q0", "c"): "qd",
+    estado_inicial = 'q0'
+    estados_finais = {'qF'}
 
-    ("q1", "a"): "q1",
-    ("q1", "b"): "q1",
-    ("q1", "c"): "q2",
+    return estados, alfabeto, transicoes, estado_inicial, estados_finais
 
-    ("q2", "a"): "q2",
-    ("q2", "c"): "q2",
-    ("q2", "b"): "qF",
+def simular_cadeia(cadeia, automato, mostrar_passos=False):
+    estados, alfabeto, transicoes, estado_inicial, estados_finais = automato
+    estado_atual = estado_inicial
 
-    ("qF", "b"): "qF",
-    ("qF", "a"): "q2",
-    ("qF", "c"): "q2",
+    if mostrar_passos:
+        print(f"Estado inicial: {estado_atual}")
 
-    ("qd", "a"): "qd",
-    ("qd", "b"): "qd",
-    ("qd", "c"): "qd",
-}
+    for i, simbolo in enumerate(cadeia, start=1):
+        if simbolo not in alfabeto:
+            # símbolo inválido para o alfabeto
+            if mostrar_passos:
+                print(f"Símbolo inválido '{simbolo}' na posição {i}. Rejeitado.")
+            return False, estado_atual
+        # obtenha transição ou vá para estado morto se undefined (mas aqui já temos todas)
+        estado_atual = transicoes.get((estado_atual, simbolo), 'qd')
+        if mostrar_passos:
+            print(f" Lê '{simbolo}' -> {estado_atual}")
 
-def step(state: str, symbol: str) -> str:
-    return delta.get((state, symbol), "qd")
+    aceito = estado_atual in estados_finais
+    if mostrar_passos:
+        print(f"Estado final: {estado_atual} -> {'ACEITA' if aceito else 'REJEITADA'}")
+    return aceito, estado_atual
 
-def accepts(s: str) -> bool:
-    state = q0
-    for ch in s:
-        if ch not in Sigma:
-            return False
-        state = step(state, ch)
-    return state in F  # True apenas se state == "qF"
+def teste_cadeias(automato, cadeias, mostrar_passos=False):
+    for s in cadeias:
+        aceito, estado_final = simular_cadeia(s, automato, mostrar_passos=mostrar_passos)
+        print(f"Cadeia '{s}': {'ACEITA' if aceito else 'REJEITADA'} (estado final: {estado_final})")
 
 if __name__ == "__main__":
-    positivos = ["acb", "accb", "aacb", "abcb", "acbb", "abacb", "abccab"]
-    negativos = ["ab", "cab", "ac", "", "b", "c", "aa"]
-    print("Testes positivos (devem ser True):")
-    for w in positivos:
-        print(f"{w:8} -> {accepts(w)}")
-    print("\nTestes negativos (devem ser False):")
-    for w in negativos:
-        print(f"{w:8} -> {accepts(w)}")
+    automato = criar_automato_linguagem()
+
+    # Leitura opcional do usuário
+    entrada = input("Digite uma cadeia sobre {a,b,c} (ou pressione Enter para pular): ").strip()
+    if entrada != "":
+        aceito, estado_final = simular_cadeia(entrada, automato, mostrar_passos=True)
+        print(f"Resultado: {'ACEITA' if aceito else 'REJEITADA'}\n")
+
+    # Testes: todas as cadeias fornecidas na Fase 1
+    cadeias_aceitas = ["acb", "accb", "aacb", "abcb", "acbb", "abacb", "abccab"]
+    cadeias_rejeitadas = ["ab", "cab", "ac"]
+
+    print("=== Testando cadeias que deveriam ser ACEITAS ===")
+    teste_cadeias(automato, cadeias_aceitas)
+
+    print("\n=== Testando cadeias que deveriam ser REJEITADAS ===")
+    teste_cadeias(automato, cadeias_rejeitadas)
